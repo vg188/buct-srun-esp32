@@ -94,7 +94,10 @@ static String urlEncode(const char *s) {
 // All timeouts are enforced by WiFiClient.setTimeout on every read.
 static bool httpGet(const char *host, const char *pathQ,
                     uint32_t timeoutMs, String &body, int *code) {
-    srunDebugLog("HTTP GET -> %s%s", host, pathQ);
+    // Never log the query: it contains account/authentication material.
+    const char* queryStart = strchr(pathQ, '?');
+    int pathLength = queryStart ? (int)(queryStart - pathQ) : (int)strlen(pathQ);
+    srunDebugLog("HTTP GET -> %s%.*s", host, pathLength, pathQ);
     body = "";  // callers reuse the same String across requests; stale data
                 // here corrupts the next response (observed: challenge body
                 // prepended to login body -> JSONP unwrap always failed)
@@ -127,7 +130,7 @@ static bool httpGet(const char *host, const char *pathQ,
     String statusLine = client.readStringUntil('\n');
     int httpCode = 0;
     if (sscanf(statusLine.c_str(), "HTTP/%*d.%*d %d", &httpCode) != 1) {
-        srunDebugLog("bad status line: %.60s", statusLine.c_str());
+        srunDebugLog("invalid HTTP status line");
         client.stop();
         if (code) *code = 0;
         return false;
@@ -233,12 +236,13 @@ bool getOnlineInfo(OnlineInfo &info) {
         return true;
     }
     info.online = false;
-    return true;  // reachable portal, just not online
+    return false;  // unknown response is not proof of an offline session
 }
 
 bool logout() {
     OnlineInfo info;
-    if (!getOnlineInfo(info) || !info.online) return true;
+    if (!getOnlineInfo(info)) return false;
+    if (!info.online) return true;
 
     char cb[48];
     makeCallback(cb, sizeof(cb));
@@ -325,12 +329,12 @@ AuthResult login(const char *username, const char *password, const char *acId) {
             return AuthResult::PORTAL_UNREACHABLE;
     }
     if (!unwrapJsonp(body, cb, json)) {
-        srunDebugLog("login: bad JSONP wrap: %.80s", body.c_str());
+        srunDebugLog("login: invalid JSONP wrapper (%u bytes)", (unsigned)body.length());
         return AuthResult::PROTOCOL_ERROR;
     }
 
-    // Log the raw response once — field layout differs across srun builds
-    srunDebugLog("login resp: %.160s", json.c_str());
+    // Log only size, never raw responses which may contain personal data.
+    srunDebugLog("login response received (%u bytes)", (unsigned)json.length());
 
     if (jsonStr(json, "ecode", err) && err == "E2901")
         return AuthResult::BAD_CREDENTIALS;

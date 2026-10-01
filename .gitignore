@@ -1,0 +1,27 @@
+# Private configuration and captured data
+Config.local.h
+.env
+.env.*
+*_pass.txt
+*.log
+*.pcap
+*.pcapng
+serial*.txt
+# Local builds may contain embedded credentials
+.diag/
+build/
+build-*/
+.pio/
+*.bin
+*.elf
+*.o
+*.a
+*.d
+*.map
+*.exe
+# Local tooling
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+.DS_Store

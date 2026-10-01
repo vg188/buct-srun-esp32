@@ -1,7 +1,7 @@
 #pragma once
 // Srun portal protocol layer for tree.buct.edu.cn
 // Endpoints verified against the live portal (V1.18 B20210610).
-#include <Arduino.h>
+#include <stdint.h>
 
 namespace srun {
 
@@ -28,7 +28,8 @@ bool getOnlineInfo(OnlineInfo &info);
 // Perform full login: get_challenge -> srun_portal login.
 AuthResult login(const char *username, const char *password, const char *acId);
 
-// Logout current IP session (used before re-login with another account).
+// Logout current IP session (used only for explicitly enabled account replacement).
+// False means status could not be determined or logout was not acknowledged.
 bool logout();
 
 // Probe connectivity through the public-internet detection endpoints.
